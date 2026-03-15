@@ -134,6 +134,8 @@
         .btn-primary:hover { opacity:.88; }
         .btn-ghost { background:var(--surface2); color:var(--text2); border:1px solid var(--border); }
         .btn-ghost:hover { color:var(--text); background:var(--surface); }
+        .form-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; color:var(--text); font-family:inherit; font-size:13px; transition:border-color .15s; }
+        .form-input:focus { border-color:var(--accent); outline:none; }
         .section-label { font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; }
         #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 16px; font-size:13px; font-weight:500; z-index:9999; box-shadow:var(--shadow-lg); transition:opacity .2s,transform .2s; opacity:0; pointer-events:none; white-space:nowrap; }
         #toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
@@ -249,6 +251,14 @@
                         <button class="lang-btn" data-lang-val="ja">日本語</button>
                         <button class="lang-btn" data-lang-val="en">English</button>
                     </div>
+                </div>
+            </div>
+            <div class="settings-group">
+                <div class="settings-group-label">同期</div>
+                <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+                    <div class="settings-item-label">API キー</div>
+                    <input class="form-input" id="apiKeyInput" type="password" placeholder="Bearer トークンを入力" autocomplete="off" style="font-size:12px">
+                    <button class="btn btn-ghost" id="saveApiKeyBtn" style="font-size:12px;padding:6px 10px;align-self:flex-end">保存</button>
                 </div>
             </div>
         </div>
@@ -413,7 +423,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsCloseBtn = document.getElementById('settingsCloseBtn');
-function openSettings() { settingsPanel.classList.add('open'); settingsBtn.setAttribute('aria-expanded', 'true'); }
+function openSettings() { settingsPanel.classList.add('open'); settingsBtn.setAttribute('aria-expanded', 'true'); document.getElementById('apiKeyInput').value = _apiKey; }
 function closeSettings() { settingsPanel.classList.remove('open'); settingsBtn.setAttribute('aria-expanded', 'false'); }
 function toggleSettings() { settingsPanel.classList.contains('open') ? closeSettings() : openSettings(); }
 settingsBtn.addEventListener('click', toggleSettings);
@@ -428,31 +438,67 @@ const toast = document.getElementById('toast');
 let _toastTimer;
 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(_toastTimer); _toastTimer = setTimeout(() => toast.classList.remove('show'), 2400); }
 
-// ── Data ──────────────────────────────────────────────
-const LOG_KEY = 'posimai-pulse-log';
-function loadLog() { try { return JSON.parse(localStorage.getItem(LOG_KEY)) || {}; } catch { return {}; } }
-function saveLog(obj) { localStorage.setItem(LOG_KEY, JSON.stringify(obj)); }
+// ── API ───────────────────────────────────────────────
+const API_BASE = 'https://posimai-lab.tail72e846.ts.net/brain/api';
+let _apiKey = localStorage.getItem('posimai-pulse-apikey') || '';
+
+async function api(method, path, body) {
+    if (!_apiKey) throw new Error('APIキー未設定');
+    const r = await fetch(API_BASE + path, {
+        method,
+        headers: { 'Authorization': 'Bearer ' + _apiKey, 'Content-Type': 'application/json' },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+}
+
+document.getElementById('saveApiKeyBtn').addEventListener('click', () => {
+    const val = document.getElementById('apiKeyInput').value.trim();
+    _apiKey = val;
+    localStorage.setItem('posimai-pulse-apikey', val);
+    closeSettings();
+    showToast('APIキーを保存しました');
+    init();
+});
+
+// ── State ─────────────────────────────────────────────
 function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+let _pending = { mood: null, energy: null, focus: null };
+let _chartEntries = {}; // date -> {mood, energy, focus}
+
+// ── Init / load ───────────────────────────────────────
+async function init() {
+    if (!_apiKey) { showToast('設定からAPIキーを入力してください'); initLogView(); return; }
+    try {
+        const [todayData, rangeData] = await Promise.all([
+            api('GET', '/pulse/log/' + todayKey()),
+            api('GET', '/pulse/log?days=7'),
+        ]);
+        _chartEntries = {};
+        for (const e of rangeData.entries) _chartEntries[e.date] = e;
+
+        const today = todayData.entry;
+        if (today) {
+            _pending = { mood: today.mood, energy: today.energy, focus: today.focus };
+            updateRating('mood', today.mood);
+            updateRating('energy', today.energy);
+            updateRating('focus', today.focus);
+            document.getElementById('savedBadge').style.display = 'inline-flex';
+        }
+        lucide.createIcons();
+    } catch (e) {
+        showToast('読み込み失敗: ' + e.message);
+    }
+}
 
 // ── Log view ──────────────────────────────────────────
 const WEEKDAYS = ['日','月','火','水','木','金','土'];
-let _pending = { mood: null, energy: null, focus: null };
 
 function initLogView() {
     const d = new Date();
     document.getElementById('logDate').textContent = `${d.getMonth()+1}月${d.getDate()}日 (${WEEKDAYS[d.getDay()]})`;
-
-    const log = loadLog();
-    const today = log[todayKey()];
-
-    // Pre-fill if already saved today
-    if (today) {
-        _pending = { mood: today.mood, energy: today.energy, focus: today.focus };
-        updateRating('mood', today.mood);
-        updateRating('energy', today.energy);
-        updateRating('focus', today.focus);
-        document.getElementById('savedBadge').style.display = 'inline-flex';
-    }
     lucide.createIcons();
 }
 
@@ -460,9 +506,7 @@ function updateRating(metric, val) {
     document.querySelectorAll(`.rating-btn[data-metric="${metric}"]`).forEach(btn => {
         btn.classList.toggle('selected', Number(btn.dataset.val) === val);
     });
-    const labels = { mood: '気分', energy: 'エネルギー', focus: '集中度' };
-    const valEl = document.getElementById(metric + 'Val');
-    valEl.textContent = val ? `${val} / 5` : '—';
+    document.getElementById(metric + 'Val').textContent = val ? `${val} / 5` : '—';
 }
 
 document.querySelectorAll('.rating-btn').forEach(btn => {
@@ -475,20 +519,22 @@ document.querySelectorAll('.rating-btn').forEach(btn => {
     });
 });
 
-document.getElementById('saveLogBtn').addEventListener('click', () => {
+document.getElementById('saveLogBtn').addEventListener('click', async () => {
     const { mood, energy, focus } = _pending;
     if (!mood || !energy || !focus) { showToast('3つすべてを選択してください'); return; }
-    const log = loadLog();
-    log[todayKey()] = { mood, energy, focus, ts: Date.now() };
-    saveLog(log);
-    document.getElementById('savedBadge').style.display = 'inline-flex';
-    lucide.createIcons();
-    showToast('記録しました');
+    try {
+        await api('POST', '/pulse/log/' + todayKey(), { mood, energy, focus });
+        _chartEntries[todayKey()] = { date: todayKey(), mood, energy, focus };
+        document.getElementById('savedBadge').style.display = 'inline-flex';
+        lucide.createIcons();
+        showToast('記録しました');
+    } catch (e) {
+        showToast('保存失敗: ' + e.message);
+    }
 });
 
 // ── Chart view ────────────────────────────────────────
 function renderChart() {
-    const log = loadLog();
     const days = [];
     const d = new Date();
     for (let i = 6; i >= 0; i--) {
@@ -496,13 +542,13 @@ function renderChart() {
         tmp.setDate(d.getDate() - i);
         const key = tmp.toISOString().slice(0, 10);
         const label = i === 0 ? '今日' : `${tmp.getMonth()+1}/${tmp.getDate()}`;
-        days.push({ key, label, isToday: i === 0, entry: log[key] || null });
+        days.push({ key, label, isToday: i === 0, entry: _chartEntries[key] || null });
     }
 
     const barsEl = document.getElementById('chartBars');
     const maxH = 100;
 
-    barsEl.innerHTML = days.map(({ key, label, isToday, entry }) => {
+    barsEl.innerHTML = days.map(({ label, isToday, entry }) => {
         const mood   = entry ? entry.mood   : 0;
         const energy = entry ? entry.energy : 0;
         const focus  = entry ? entry.focus  : 0;
@@ -528,19 +574,20 @@ function renderChart() {
 
     // Avg
     const entries = days.filter(d => d.entry).map(d => d.entry);
-    const avg = (key) => entries.length ? (entries.reduce((s, e) => s + e[key], 0) / entries.length).toFixed(1) : '—';
+    const avg = (key) => entries.length ? (entries.reduce((s, e) => s + (e[key] || 0), 0) / entries.length).toFixed(1) : '—';
     const avgs = [
-        { label: '気分', icon: '😊', val: avg('mood') },
-        { label: 'エネルギー', icon: '⚡', val: avg('energy') },
-        { label: '集中度', icon: '🎯', val: avg('focus') },
+        { label: '気分',       icon: 'smile',  val: avg('mood')   },
+        { label: 'エネルギー', icon: 'zap',    val: avg('energy') },
+        { label: '集中度',     icon: 'target', val: avg('focus')  },
     ];
     document.getElementById('avgGrid').innerHTML = avgs.map(a => `
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;text-align:center">
-            <div style="font-size:20px;margin-bottom:4px">${a.icon}</div>
+            <div style="display:flex;justify-content:center;margin-bottom:6px"><i data-lucide="${a.icon}" style="width:18px;height:18px;stroke-width:1.75;color:var(--accent)"></i></div>
             <div style="font-size:22px;font-weight:700;color:var(--accent)">${a.val}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.label}</div>
         </div>
     `).join('');
+    lucide.createIcons();
 }
 
 // ── Init ─────────────────────────────────────────────
@@ -548,6 +595,7 @@ applyTheme(_themePref);
 applyLocale(_locale);
 initLogView();
 lucide.createIcons();
+init();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>
