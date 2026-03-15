@@ -1,0 +1,17 @@
+{
+  "id": "posimai-pulse",
+  "name": "Posimai Pulse",
+  "short_name": "Pulse",
+  "description": "気分・エネルギー・集中度を毎日1タップで記録",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#0D0D0D",
+  "theme_color": "#0D0D0D",
+  "orientation": "any",
+  "categories": ["productivity", "health"],
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

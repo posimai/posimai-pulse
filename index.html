@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <script>
+    (function () {
+        var t = localStorage.getItem('posimai-pulse-theme') || 'system';
+        var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme:dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme-pref', t);
+        var loc = localStorage.getItem('posimai-pulse-locale');
+        if (!loc) loc = navigator.language && navigator.language.startsWith('en') ? 'en' : 'ja';
+        document.documentElement.lang = loc;
+        document.documentElement.setAttribute('data-locale', loc);
+    })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="気分・エネルギー・集中度を毎日1タップで記録">
+    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#0D0D0D" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#F9FAFB" media="(prefers-color-scheme: light)">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Posimai Pulse">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <title>Posimai Pulse</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root, [data-theme="dark"] {
+            --bg:#0D0D0D; --surface:#1A1A1A; --surface2:#252525; --border:#2D2D2D;
+            --text:#F3F4F6; --text2:#9CA3AF; --text3:#6B7280;
+            --accent:#6EE7B7; --accent-dim:rgba(110,231,183,0.1); --accent-border:rgba(110,231,183,0.25);
+            --header-bg:rgba(13,13,13,0.85); --sidebar-bg:rgba(13,13,13,0.88);
+            --overlay-bg:rgba(0,0,0,0.6); --shadow-lg:0 8px 32px rgba(0,0,0,0.5); --shadow-sm:0 2px 8px rgba(0,0,0,0.3);
+            color-scheme: dark;
+        }
+        [data-theme="light"] {
+            --bg:#F9FAFB; --surface:#FFFFFF; --surface2:#F3F4F6; --border:#E5E7EB;
+            --text:#111827; --text2:#4B5563; --text3:#9CA3AF;
+            --accent:#059669; --accent-dim:rgba(5,150,105,0.08); --accent-border:rgba(5,150,105,0.2);
+            --header-bg:rgba(249,250,251,0.85); --sidebar-bg:rgba(249,250,251,0.92);
+            --overlay-bg:rgba(0,0,0,0.4); --shadow-lg:0 8px 32px rgba(0,0,0,0.15); --shadow-sm:0 2px 8px rgba(0,0,0,0.08);
+            color-scheme: light;
+        }
+        :root { --radius:12px; --radius-sm:8px; --header-h:52px; --sidebar-w:240px; --ease:cubic-bezier(.4,0,.2,1); --dur:0.2s; }
+        body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+        .app { display:flex; min-height:100dvh; }
+        :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+        :focus:not(:focus-visible) { outline:none; }
+
+        /* Sidebar (same pattern) */
+        .sidebar { position:fixed; top:0; left:0; bottom:0; width:var(--sidebar-w); background:var(--sidebar-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:200; transform:translateX(-100%); transition:transform .25s var(--ease); }
+        .sidebar.open { transform:translateX(0); box-shadow:var(--shadow-lg); }
+        .sidebar-header { height:var(--header-h); display:flex; align-items:center; justify-content:space-between; padding:0 12px 0 16px; flex-shrink:0; }
+        .brand { display:flex; align-items:center; gap:10px; }
+        .brand-logo { width:28px; height:28px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#6EE7B7,#047857); }
+        [data-theme="light"] .brand-logo { background:linear-gradient(135deg,#34D399,#059669); }
+        .brand-text { display:flex; flex-direction:column; }
+        .brand-name { font-size:13px; font-weight:600; letter-spacing:-0.01em; line-height:1.3; }
+        .brand-org { font-size:10px; font-weight:500; color:var(--text3); text-transform:uppercase; letter-spacing:0.1em; }
+        .sidebar-nav { flex:1; overflow-y:auto; padding:4px 8px 0; }
+        .sidebar-nav::-webkit-scrollbar { width:0; }
+        .nav-section-label { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.1em; padding:12px 10px 4px; }
+        .nav-item { display:flex; align-items:center; gap:9px; padding:9px 10px; min-height:40px; border-radius:var(--radius-sm); border:1px solid transparent; cursor:pointer; color:var(--text2); font-size:13px; font-weight:500; transition:background var(--dur) var(--ease),color var(--dur) var(--ease),border-color var(--dur) var(--ease); text-decoration:none; user-select:none; }
+        .nav-item:hover { background:var(--surface2); color:var(--text); }
+        .nav-item.active { background:var(--accent-dim); color:var(--accent); border-color:var(--accent-border); }
+        .nav-item svg { flex-shrink:0; opacity:.8; }
+        .nav-item.active svg { opacity:1; }
+        .nav-item-label { flex:1; }
+        .sidebar-footer { flex-shrink:0; padding:8px; border-top:1px solid var(--border); }
+        .user-row { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:var(--radius-sm); cursor:pointer; transition:background var(--dur); }
+        .user-row:hover { background:var(--surface2); }
+        .user-avatar { width:28px; height:28px; border-radius:50%; background:var(--accent-dim); border:1px solid var(--accent-border); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--accent); flex-shrink:0; }
+        .user-info { flex:1; min-width:0; }
+        .user-name { font-size:12px; font-weight:500; color:var(--text); }
+        .user-role { font-size:11px; color:var(--text3); }
+        .settings-trigger { background:none; border:none; cursor:pointer; color:var(--text3); display:flex; align-items:center; padding:6px; border-radius:var(--radius-sm); transition:color var(--dur),background var(--dur); flex-shrink:0; }
+        .settings-trigger:hover { color:var(--text2); background:var(--surface2); }
+        .settings-panel { position:fixed; top:0; right:0; bottom:0; width:280px; background:var(--surface); border-left:1px solid var(--border); display:flex; flex-direction:column; z-index:300; transform:translateX(100%); transition:transform .25s var(--ease); }
+        .settings-panel.open { transform:translateX(0); box-shadow:var(--shadow-lg); }
+        .settings-panel-header { height:var(--header-h); display:flex; align-items:center; justify-content:space-between; padding:0 12px 0 16px; flex-shrink:0; border-bottom:1px solid var(--border); }
+        .settings-panel-title { font-size:14px; font-weight:600; }
+        .settings-panel-body { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:24px; }
+        .settings-group { display:flex; flex-direction:column; }
+        .settings-group-label { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; }
+        .settings-item { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+        .settings-item:last-child { border-bottom:none; }
+        .settings-item-label { font-size:13px; color:var(--text); }
+        .theme-selector { display:flex; gap:4px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px; }
+        .theme-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:6px 8px; border-radius:6px; border:none; cursor:pointer; font-family:inherit; font-size:11px; font-weight:500; color:var(--text3); background:none; transition:all var(--dur) var(--ease); white-space:nowrap; }
+        .theme-btn:hover { color:var(--text2); }
+        .theme-btn.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow-sm); }
+        .lang-selector { display:flex; gap:4px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px; }
+        .lang-btn { flex:1; padding:7px; border-radius:6px; border:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; color:var(--text3); background:none; transition:all var(--dur) var(--ease); text-align:center; }
+        .lang-btn:hover { color:var(--text2); }
+        .lang-btn.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow-sm); }
+        .overlay { display:none; position:fixed; inset:0; background:var(--overlay-bg); backdrop-filter:blur(2px); z-index:150; }
+        .overlay.open { display:block; }
+        .main { flex:1; display:flex; flex-direction:column; min-width:0; }
+        .header { height:var(--header-h); display:flex; align-items:center; gap:8px; padding:0 16px; background:var(--header-bg); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+        .page-title { font-size:14px; font-weight:600; letter-spacing:-0.01em; flex:1; }
+        .mobile-brand { display:flex; align-items:center; gap:7px; flex:1; }
+        .mobile-brand-dot { width:7px; height:7px; background:var(--accent); border-radius:50%; }
+        .mobile-brand-name { font-size:14px; font-weight:600; }
+        .icon-btn { background:none; border:none; cursor:pointer; color:var(--text2); min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); transition:color var(--dur),background var(--dur); flex-shrink:0; margin:0 -8px; }
+        .icon-btn:hover { color:var(--text); background:var(--surface2); }
+        .content { flex:1; padding:24px 20px calc(40px + env(safe-area-inset-bottom)); max-width:960px; width:100%; margin:0 auto; }
+        @media (min-width: 1024px) {
+            .sidebar { transform:translateX(0) !important; box-shadow:none !important; }
+            .main { margin-left:var(--sidebar-w); }
+            .mobile-brand { display:none; }
+            .page-title { display:block; }
+            #menuBtn { display:none; }
+            .overlay { display:none !important; }
+            body.sidebar-collapsed .sidebar { transform:translateX(-100%) !important; }
+            body.sidebar-collapsed .main { margin-left:0; }
+            body.sidebar-collapsed #menuBtn { display:flex !important; }
+            body.sidebar-collapsed .mobile-brand { display:flex !important; }
+            body.sidebar-collapsed .page-title { display:none; }
+        }
+        @media (max-width: 1023px) { .page-title { display:none; } .mobile-brand { display:flex; } }
+
+        .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:var(--radius-sm); border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; transition:all var(--dur) var(--ease); }
+        .btn-primary { background:var(--accent); color:#0D0D0D; }
+        .btn-primary:hover { opacity:.88; }
+        .btn-ghost { background:var(--surface2); color:var(--text2); border:1px solid var(--border); }
+        .btn-ghost:hover { color:var(--text); background:var(--surface); }
+        .section-label { font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; }
+        #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 16px; font-size:13px; font-weight:500; z-index:9999; box-shadow:var(--shadow-lg); transition:opacity .2s,transform .2s; opacity:0; pointer-events:none; white-space:nowrap; }
+        #toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
+
+        /* ── Pulse specific ── */
+        .today-header { margin-bottom:28px; }
+        .today-date { font-size:18px; font-weight:600; margin-bottom:2px; }
+        .today-sub { font-size:12px; color:var(--text3); }
+
+        .metric-card {
+            background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+            padding:20px; margin-bottom:14px;
+        }
+        .metric-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+        .metric-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+        .metric-name { font-size:14px; font-weight:600; }
+        .metric-val { font-size:13px; font-weight:700; color:var(--accent); margin-left:auto; }
+
+        .rating-row { display:flex; gap:8px; }
+        .rating-btn {
+            flex:1; aspect-ratio:1; border-radius:var(--radius-sm); border:1px solid var(--border);
+            background:var(--surface2); cursor:pointer; font-size:16px; font-weight:700;
+            color:var(--text3); transition:all .15s; display:flex; align-items:center; justify-content:center;
+            font-family:inherit;
+        }
+        .rating-btn:hover { border-color:var(--accent-border); color:var(--text); }
+        .rating-btn.selected { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); }
+
+        /* Chart */
+        .chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
+        .chart-bars { display:flex; align-items:flex-end; gap:6px; height:120px; margin-bottom:8px; }
+        .chart-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; }
+        .chart-bar-wrap { flex:1; width:100%; display:flex; flex-direction:column; justify-content:flex-end; position:relative; }
+        .chart-bar { width:100%; border-radius:4px 4px 0 0; transition:height .4s var(--ease); min-height:2px; position:relative; }
+        .chart-bar.mood  { background:rgba(110,231,183,0.7); }
+        .chart-bar.energy { background:rgba(251,191,36,0.7); }
+        .chart-bar.focus { background:rgba(129,140,248,0.7); }
+        [data-theme="light"] .chart-bar.mood  { background:rgba(5,150,105,0.6); }
+        [data-theme="light"] .chart-bar.energy { background:rgba(217,119,6,0.6); }
+        [data-theme="light"] .chart-bar.focus { background:rgba(99,102,241,0.6); }
+        .chart-day-label { font-size:10px; color:var(--text3); font-weight:500; }
+        .chart-day-label.today { color:var(--accent); font-weight:700; }
+        .chart-legend { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; }
+        .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text3); }
+        .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+        .saved-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:var(--accent-dim); border:1px solid var(--accent-border); color:var(--accent); font-size:12px; font-weight:600; }
+    </style>
+</head>
+<body>
+<a href="#main-content" style="position:absolute;top:-100%;left:8px;background:var(--accent);color:#0D0D0D;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px;z-index:10000;text-decoration:none" tabindex="0">コンテンツへスキップ</a>
+<div class="app">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar" role="navigation">
+        <div class="sidebar-header">
+            <div class="brand">
+                <div class="brand-logo" aria-hidden="true">
+                    <i data-lucide="activity" style="width:16px;height:16px;color:#0D0D0D;stroke-width:2.5"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">Posimai Pulse</span>
+                    <span class="brand-org">Posimai</span>
+                </div>
+            </div>
+            <button class="icon-btn" id="closeBtn" aria-label="メニューを閉じる">
+                <i data-lucide="x" style="width:18px;height:18px;stroke-width:1.75"></i>
+            </button>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section-label">メニュー</div>
+            <a class="nav-item active" data-view="log" data-title-ja="今日の記録" data-title-en="Today" href="#" role="menuitem">
+                <i data-lucide="heart-pulse" style="width:16px;height:16px;stroke-width:1.75"></i>
+                <span class="nav-item-label">今日の記録</span>
+            </a>
+            <a class="nav-item" data-view="chart" data-title-ja="トレンド" data-title-en="Trend" href="#" role="menuitem">
+                <i data-lucide="trending-up" style="width:16px;height:16px;stroke-width:1.75"></i>
+                <span class="nav-item-label">トレンド</span>
+            </a>
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-row" role="button" tabindex="0">
+                <div class="user-avatar" aria-hidden="true">P</div>
+                <div class="user-info"><div class="user-name">Posimai</div><div class="user-role">Personal</div></div>
+                <button class="settings-trigger" id="settingsBtn" aria-label="設定" aria-expanded="false">
+                    <i data-lucide="settings" style="width:16px;height:16px;stroke-width:1.5"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Settings -->
+    <aside class="settings-panel" id="settingsPanel" role="complementary">
+        <div class="settings-panel-header">
+            <span class="settings-panel-title">設定</span>
+            <button class="icon-btn" id="settingsCloseBtn" aria-label="設定を閉じる">
+                <i data-lucide="x" style="width:18px;height:18px;stroke-width:1.75"></i>
+            </button>
+        </div>
+        <div class="settings-panel-body">
+            <div class="settings-group">
+                <div class="settings-group-label">外観</div>
+                <div class="settings-item">
+                    <div class="settings-item-label">テーマ</div>
+                    <div class="theme-selector">
+                        <button class="theme-btn" data-theme-val="dark"><i data-lucide="moon" style="width:12px;height:12px;stroke-width:1.75"></i>ダーク</button>
+                        <button class="theme-btn" data-theme-val="light"><i data-lucide="sun" style="width:12px;height:12px;stroke-width:1.75"></i>ライト</button>
+                        <button class="theme-btn" data-theme-val="system"><i data-lucide="monitor" style="width:12px;height:12px;stroke-width:1.75"></i>自動</button>
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-label">言語 / Language</div>
+                    <div class="lang-selector">
+                        <button class="lang-btn" data-lang-val="ja">日本語</button>
+                        <button class="lang-btn" data-lang-val="en">English</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="overlay" id="overlay" aria-hidden="true"></div>
+
+    <div class="main">
+        <header class="header">
+            <button class="icon-btn" id="menuBtn" aria-label="メニューを開く" aria-expanded="false">
+                <i data-lucide="menu" style="width:20px;height:20px;stroke-width:1.75"></i>
+            </button>
+            <div class="mobile-brand" aria-hidden="true">
+                <div class="mobile-brand-dot"></div>
+                <span class="mobile-brand-name">Pulse</span>
+            </div>
+            <span class="page-title" id="pageTitle">今日の記録</span>
+        </header>
+
+        <main class="content" id="main-content">
+
+            <!-- 記録ビュー -->
+            <div id="view-log">
+                <div class="today-header">
+                    <div class="today-date" id="logDate"></div>
+                    <div class="today-sub">今日のコンディションを記録してください</div>
+                </div>
+
+                <!-- 気分 -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon">😊</div>
+                        <span class="metric-name">気分</span>
+                        <span class="metric-val" id="moodVal">—</span>
+                    </div>
+                    <div class="rating-row" id="moodRow">
+                        <button class="rating-btn" data-metric="mood" data-val="1">1</button>
+                        <button class="rating-btn" data-metric="mood" data-val="2">2</button>
+                        <button class="rating-btn" data-metric="mood" data-val="3">3</button>
+                        <button class="rating-btn" data-metric="mood" data-val="4">4</button>
+                        <button class="rating-btn" data-metric="mood" data-val="5">5</button>
+                    </div>
+                </div>
+
+                <!-- エネルギー -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon">⚡</div>
+                        <span class="metric-name">エネルギー</span>
+                        <span class="metric-val" id="energyVal">—</span>
+                    </div>
+                    <div class="rating-row" id="energyRow">
+                        <button class="rating-btn" data-metric="energy" data-val="1">1</button>
+                        <button class="rating-btn" data-metric="energy" data-val="2">2</button>
+                        <button class="rating-btn" data-metric="energy" data-val="3">3</button>
+                        <button class="rating-btn" data-metric="energy" data-val="4">4</button>
+                        <button class="rating-btn" data-metric="energy" data-val="5">5</button>
+                    </div>
+                </div>
+
+                <!-- 集中度 -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon">🎯</div>
+                        <span class="metric-name">集中度</span>
+                        <span class="metric-val" id="focusVal">—</span>
+                    </div>
+                    <div class="rating-row" id="focusRow">
+                        <button class="rating-btn" data-metric="focus" data-val="1">1</button>
+                        <button class="rating-btn" data-metric="focus" data-val="2">2</button>
+                        <button class="rating-btn" data-metric="focus" data-val="3">3</button>
+                        <button class="rating-btn" data-metric="focus" data-val="4">4</button>
+                        <button class="rating-btn" data-metric="focus" data-val="5">5</button>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+                    <button class="btn btn-primary" id="saveLogBtn">
+                        <i data-lucide="save" style="width:14px;height:14px;stroke-width:2"></i>
+                        保存
+                    </button>
+                    <span id="savedBadge" class="saved-badge" style="display:none">
+                        <i data-lucide="check" style="width:12px;height:12px;stroke-width:3"></i>
+                        記録済み
+                    </span>
+                </div>
+            </div>
+
+            <!-- トレンドビュー -->
+            <div id="view-chart" hidden>
+                <div class="section-label">過去 7 日間</div>
+                <div class="chart-wrap">
+                    <div class="chart-bars" id="chartBars"></div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:rgba(110,231,183,0.7)"></div>気分</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.7)"></div>エネルギー</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:rgba(129,140,248,0.7)"></div>集中度</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px">
+                    <div class="section-label">7日間の平均</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="avgGrid"></div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+// ── i18n & Theme ──────────────────────────────────────
+let _locale = document.documentElement.getAttribute('data-locale') || 'ja';
+function applyLocale(locale) {
+    _locale = locale;
+    document.documentElement.lang = locale;
+    document.documentElement.setAttribute('data-locale', locale);
+    localStorage.setItem('posimai-pulse-locale', locale);
+    document.querySelectorAll('.lang-btn').forEach(b => { const a = b.dataset.langVal === locale; b.classList.toggle('active', a); b.setAttribute('aria-pressed', String(a)); });
+}
+let _themePref = document.documentElement.getAttribute('data-theme-pref') || 'system';
+const _mql = window.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(pref) {
+    _themePref = pref;
+    localStorage.setItem('posimai-pulse-theme', pref);
+    document.documentElement.setAttribute('data-theme-pref', pref);
+    const dark = pref === 'dark' || (pref === 'system' && _mql.matches);
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.querySelectorAll('.theme-btn').forEach(b => { const a = b.dataset.themeVal === pref; b.classList.toggle('active', a); b.setAttribute('aria-pressed', String(a)); });
+}
+_mql.addEventListener('change', () => { if (_themePref === 'system') applyTheme('system'); });
+
+// ── Sidebar ───────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+const menuBtn = document.getElementById('menuBtn');
+const closeBtn = document.getElementById('closeBtn');
+const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+function openSidebar() { if (isDesktop()) document.body.classList.remove('sidebar-collapsed'); else { sidebar.classList.add('open'); overlay.classList.add('open'); } menuBtn.setAttribute('aria-expanded', 'true'); }
+function closeSidebar() { if (isDesktop()) document.body.classList.add('sidebar-collapsed'); else { sidebar.classList.remove('open'); overlay.classList.remove('open'); } menuBtn.setAttribute('aria-expanded', 'false'); }
+menuBtn.addEventListener('click', openSidebar);
+closeBtn.addEventListener('click', closeSidebar);
+overlay.addEventListener('click', () => { closeSidebar(); closeSettings(); });
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+        const title = _locale === 'en' ? item.dataset.titleEn : item.dataset.titleJa;
+        if (title) document.getElementById('pageTitle').textContent = title;
+        document.querySelectorAll('[id^="view-"]').forEach(v => v.hidden = true);
+        const el = document.getElementById('view-' + item.dataset.view);
+        if (el) el.hidden = false;
+        if (!isDesktop()) closeSidebar();
+        if (item.dataset.view === 'chart') renderChart();
+    });
+});
+
+// ── Settings ──────────────────────────────────────────
+const settingsPanel = document.getElementById('settingsPanel');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+function openSettings() { settingsPanel.classList.add('open'); settingsBtn.setAttribute('aria-expanded', 'true'); }
+function closeSettings() { settingsPanel.classList.remove('open'); settingsBtn.setAttribute('aria-expanded', 'false'); }
+function toggleSettings() { settingsPanel.classList.contains('open') ? closeSettings() : openSettings(); }
+settingsBtn.addEventListener('click', toggleSettings);
+settingsCloseBtn.addEventListener('click', closeSettings);
+document.querySelector('.user-row').addEventListener('click', e => { if (!e.target.closest('button') || e.target.closest('#settingsBtn')) toggleSettings(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (settingsPanel.classList.contains('open')) closeSettings(); else if (!isDesktop() && sidebar.classList.contains('open')) closeSidebar(); } });
+document.querySelectorAll('.theme-btn').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeVal)));
+document.querySelectorAll('.lang-btn').forEach(b => b.addEventListener('click', () => applyLocale(b.dataset.langVal)));
+
+// ── Toast ─────────────────────────────────────────────
+const toast = document.getElementById('toast');
+let _toastTimer;
+function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(_toastTimer); _toastTimer = setTimeout(() => toast.classList.remove('show'), 2400); }
+
+// ── Data ──────────────────────────────────────────────
+const LOG_KEY = 'posimai-pulse-log';
+function loadLog() { try { return JSON.parse(localStorage.getItem(LOG_KEY)) || {}; } catch { return {}; } }
+function saveLog(obj) { localStorage.setItem(LOG_KEY, JSON.stringify(obj)); }
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+// ── Log view ──────────────────────────────────────────
+const WEEKDAYS = ['日','月','火','水','木','金','土'];
+let _pending = { mood: null, energy: null, focus: null };
+
+function initLogView() {
+    const d = new Date();
+    document.getElementById('logDate').textContent = `${d.getMonth()+1}月${d.getDate()}日 (${WEEKDAYS[d.getDay()]})`;
+
+    const log = loadLog();
+    const today = log[todayKey()];
+
+    // Pre-fill if already saved today
+    if (today) {
+        _pending = { mood: today.mood, energy: today.energy, focus: today.focus };
+        updateRating('mood', today.mood);
+        updateRating('energy', today.energy);
+        updateRating('focus', today.focus);
+        document.getElementById('savedBadge').style.display = 'inline-flex';
+    }
+    lucide.createIcons();
+}
+
+function updateRating(metric, val) {
+    document.querySelectorAll(`.rating-btn[data-metric="${metric}"]`).forEach(btn => {
+        btn.classList.toggle('selected', Number(btn.dataset.val) === val);
+    });
+    const labels = { mood: '気分', energy: 'エネルギー', focus: '集中度' };
+    const valEl = document.getElementById(metric + 'Val');
+    valEl.textContent = val ? `${val} / 5` : '—';
+}
+
+document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const metric = btn.dataset.metric;
+        const val = Number(btn.dataset.val);
+        _pending[metric] = val;
+        updateRating(metric, val);
+        document.getElementById('savedBadge').style.display = 'none';
+    });
+});
+
+document.getElementById('saveLogBtn').addEventListener('click', () => {
+    const { mood, energy, focus } = _pending;
+    if (!mood || !energy || !focus) { showToast('3つすべてを選択してください'); return; }
+    const log = loadLog();
+    log[todayKey()] = { mood, energy, focus, ts: Date.now() };
+    saveLog(log);
+    document.getElementById('savedBadge').style.display = 'inline-flex';
+    lucide.createIcons();
+    showToast('記録しました');
+});
+
+// ── Chart view ────────────────────────────────────────
+function renderChart() {
+    const log = loadLog();
+    const days = [];
+    const d = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const tmp = new Date(d);
+        tmp.setDate(d.getDate() - i);
+        const key = tmp.toISOString().slice(0, 10);
+        const label = i === 0 ? '今日' : `${tmp.getMonth()+1}/${tmp.getDate()}`;
+        days.push({ key, label, isToday: i === 0, entry: log[key] || null });
+    }
+
+    const barsEl = document.getElementById('chartBars');
+    const maxH = 100;
+
+    barsEl.innerHTML = days.map(({ key, label, isToday, entry }) => {
+        const mood   = entry ? entry.mood   : 0;
+        const energy = entry ? entry.energy : 0;
+        const focus  = entry ? entry.focus  : 0;
+
+        const mH = Math.round(mood   / 5 * maxH);
+        const eH = Math.round(energy / 5 * maxH);
+        const fH = Math.round(focus  / 5 * maxH);
+
+        const bars = entry
+            ? `<div style="display:flex;gap:2px;height:100%;align-items:flex-end;width:100%">
+                <div class="chart-bar mood"   style="flex:1;height:${mH}%" title="気分:${mood}"></div>
+                <div class="chart-bar energy" style="flex:1;height:${eH}%" title="エネルギー:${energy}"></div>
+                <div class="chart-bar focus"  style="flex:1;height:${fH}%" title="集中度:${focus}"></div>
+               </div>`
+            : `<div style="width:100%;height:2px;background:var(--border);border-radius:999px"></div>`;
+
+        return `
+        <div class="chart-col">
+            <div class="chart-bar-wrap">${bars}</div>
+            <div class="chart-day-label${isToday ? ' today' : ''}">${label}</div>
+        </div>`;
+    }).join('');
+
+    // Avg
+    const entries = days.filter(d => d.entry).map(d => d.entry);
+    const avg = (key) => entries.length ? (entries.reduce((s, e) => s + e[key], 0) / entries.length).toFixed(1) : '—';
+    const avgs = [
+        { label: '気分', icon: '😊', val: avg('mood') },
+        { label: 'エネルギー', icon: '⚡', val: avg('energy') },
+        { label: '集中度', icon: '🎯', val: avg('focus') },
+    ];
+    document.getElementById('avgGrid').innerHTML = avgs.map(a => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;text-align:center">
+            <div style="font-size:20px;margin-bottom:4px">${a.icon}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent)">${a.val}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.label}</div>
+        </div>
+    `).join('');
+}
+
+// ── Init ─────────────────────────────────────────────
+applyTheme(_themePref);
+applyLocale(_locale);
+initLogView();
+lucide.createIcons();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+</body>
+</html>
