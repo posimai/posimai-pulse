@@ -261,6 +261,15 @@
                     <button class="btn btn-ghost" id="saveApiKeyBtn" style="font-size:12px;padding:6px 10px;align-self:flex-end">保存</button>
                 </div>
             </div>
+            <div class="settings-group">
+                <div class="settings-group-label">データ</div>
+                <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+                    <button class="btn btn-ghost" id="exportBtn" style="width:100%;justify-content:center">
+                        <i data-lucide="download" style="width:14px;height:14px;stroke-width:1.75"></i>
+                        データをエクスポート (JSON)
+                    </button>
+                </div>
+            </div>
         </div>
     </aside>
 
@@ -589,6 +598,23 @@ function renderChart() {
     `).join('');
     lucide.createIcons();
 }
+
+// ── Export data ───────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', () => {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('posimai-pulse')) {
+            data[key] = localStorage.getItem(key);
+        }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'posimai-pulse-export.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+});
 
 // ── Init ─────────────────────────────────────────────
 applyTheme(_themePref);
