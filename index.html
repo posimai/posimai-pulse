@@ -450,6 +450,10 @@ function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); 
 // ── API ───────────────────────────────────────────────
 const API_BASE = 'https://posimai-lab.tail72e846.ts.net/brain/api';
 let _apiKey = localStorage.getItem('posimai-pulse-apikey') || '';
+(function() {
+    const p = new URLSearchParams(location.search).get('init_key');
+    if (p) { _apiKey = p; localStorage.setItem('posimai-pulse-apikey', p); history.replaceState(null, '', location.pathname); }
+})();
 
 async function api(method, path, body) {
     if (!_apiKey) throw new Error('APIキー未設定');
