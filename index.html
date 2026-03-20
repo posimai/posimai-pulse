@@ -345,10 +345,7 @@
                 </div>
 
                 <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
-                    <button class="btn btn-primary" id="saveLogBtn">
-                        <i data-lucide="save" style="width:14px;height:14px;stroke-width:2"></i>
-                        保存
-                    </button>
+                    <button class="btn btn-primary" id="saveLogBtn">保存</button>
                     <span id="savedBadge" class="saved-badge" style="display:none">
                         <i data-lucide="check" style="width:12px;height:12px;stroke-width:3"></i>
                         記録済み
@@ -484,15 +481,15 @@ let _chartEntries = {}; // date -> {mood, energy, focus}
 // ── Init / load ───────────────────────────────────────
 async function init() {
     if (!_apiKey) { showToast('設定からAPIキーを入力してください'); initLogView(); return; }
-    try {
-        const [todayData, rangeData] = await Promise.all([
-            api('GET', '/pulse/log/' + todayKey()),
-            api('GET', '/pulse/log?days=7'),
-        ]);
-        _chartEntries = {};
-        for (const e of rangeData.entries) _chartEntries[e.date] = e;
-
-        const today = todayData.entry;
+    // today と range は独立して取得（range の失敗が today 表示を妨げないよう分離）
+    const [todayResult, rangeResult] = await Promise.allSettled([
+        api('GET', '/pulse/log/' + todayKey()),
+        api('GET', '/pulse/log?days=7'),
+    ]);
+    if (todayResult.status === 'rejected') {
+        showToast('読み込み失敗: ' + todayResult.reason.message);
+    } else {
+        const today = todayResult.value.entry;
         if (today) {
             _pending = { mood: today.mood, energy: today.energy, focus: today.focus };
             updateRating('mood', today.mood);
@@ -500,10 +497,12 @@ async function init() {
             updateRating('focus', today.focus);
             document.getElementById('savedBadge').style.display = 'inline-flex';
         }
-        lucide.createIcons();
-    } catch (e) {
-        showToast('読み込み失敗: ' + e.message);
     }
+    if (rangeResult.status === 'fulfilled') {
+        _chartEntries = {};
+        for (const e of rangeResult.value.entries) _chartEntries[e.date] = e;
+    }
+    lucide.createIcons();
 }
 
 // ── Log view ──────────────────────────────────────────
