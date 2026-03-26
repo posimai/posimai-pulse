@@ -445,7 +445,7 @@ let _toastTimer;
 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(_toastTimer); _toastTimer = setTimeout(() => toast.classList.remove('show'), 2400); }
 
 // ── API ───────────────────────────────────────────────
-const API_BASE = 'https://posimai.soar-enrich.com/brain/api';
+const API_BASE = 'https://api.soar-enrich.com/brain/api';
 let _apiKey = localStorage.getItem('posimai-pulse-apikey') || '';
 (function() {
     const p = new URLSearchParams(location.search).get('init_key');
